@@ -1,0 +1,90 @@
+Imports System.IO
+Public Class Form1
+    Public Function GetPageHTML(ByVal URL As String,
+      Optional ByVal TimeoutSeconds As Integer = 10) _
+      As String
+        ' Retrieves the HTML from the specified URL,
+        ' using a default timeout of 10 seconds
+        Dim objRequest As Net.WebRequest
+        Dim objResponse As Net.WebResponse
+        Dim objStreamReceive As System.IO.Stream
+        Dim objEncoding As System.Text.Encoding
+        Dim objStreamRead As System.IO.StreamReader
+
+        Try
+            ' Setup our Web request
+            objRequest = Net.WebRequest.Create(URL)
+            objRequest.Timeout = TimeoutSeconds * 1000
+            ' Retrieve data from request
+            objResponse = objRequest.GetResponse
+            objStreamReceive = objResponse.GetResponseStream
+            objEncoding = System.Text.Encoding.GetEncoding(
+           "utf-8")
+            objStreamRead = New System.IO.StreamReader(
+           objStreamReceive, objEncoding)
+            ' Set function return value
+            GetPageHTML = objStreamRead.ReadToEnd()
+            ' Check if available, then close response
+            If Not objResponse Is Nothing Then
+                objResponse.Close()
+            End If
+        Catch
+            ' Error occured grabbing data, simply return nothing
+            Return ""
+        End Try
+    End Function
+    Private Sub btnProcess_Click(sender As Object, e As EventArgs) Handles btnProcess.Click
+        'The HTML of the Amazon listing is placed into a string called s
+        Dim s As String = GetPageHTML("http://www.amazon.com/Clannad-After-Story-Complete-Collection/dp/B004JST21W/ref=tmm_dvd_swatch_0?_encoding=UTF8&qid=1459796823&sr=8-1")
+        
+        'Ideally, the user puts in a link in a textbox or some other input form which is fed into GetPageHTML
+        'The subsequent output is returned to a linklabel, listview, and/or textbox
+        Dim ss() As String
+        
+        'This looks for points with which we can use to separate the code into substrings. "<" in this case.
+        Dim delim() As String = {"<"}
+        
+        'Searches for the ">$" before the monetary value (on its left side)
+        Dim searchString As String = ">$"
+        
+        'This becomes the starting value for our index
+        Dim startIndex As Integer = s.IndexOf(searchString)
+        
+        'The searchString is changed to find the the string listed below which borders the monetary value on its right side.
+        searchString = "</span>" & vbLf & "                </div>" & vbLf & "            " & vbLf & "        </div>" & vbLf & "    </div>" & vbLf & "    " & vbLf & "    </h5>"
+        
+        'The value of the first character, the " before </span>, is indexed
+        Dim endIndex As Integer = s.IndexOf(searchString)
+        
+        'The substring
+        Dim substring As String = s.Substring(startIndex, endIndex) ' + searchString.Length - startIndex)
+        
+        'searchString is changed to just the $ before the monetary value, and the value of this searchString's location is indexed into startIndex
+        searchString = "$"
+        startIndex = substring.IndexOf(searchString)
+        
+        'searchString is changed to the </span> located after the monetary value, and the value of this searchString's location is indexed into endIndex
+        searchString = "</span>"
+        endIndex = substring.IndexOf(searchString)
+        
+        'The second substring is declared
+        Dim substring1 As String = substring.Substring(startIndex, endIndex)
+        
+        'It subsequently is split into another substring called ss
+        ss = substring1.Split(delim, StringSplitOptions.None)
+        
+        'Price is declared as a double equal to the substring at the 0 position
+        'ss(0) equals the price of the item; ss(1) equals the righthand side of the substring after the price (</span>...)
+        Dim price As Double = ss(0)
+        
+        'Returns all substrings to a listbox in order to better show the trimming
+        lbxHTML.Items.Add(substring)
+        lbxHTML.Items.Add(substring1)
+        lbxHTML.Items.Add(price)
+    End Sub
+
+    Private Sub btnExit_Click(sender As Object, e As EventArgs) Handles btnExit.Click
+        Me.Close()
+        Application.Exit()
+    End Sub
+End Class
