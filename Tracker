@@ -1,5 +1,19 @@
 Imports System.IO
-Public Class Form1
+Imports System.Net
+Imports System.Data
+Imports MySql.Data.MySqlClient
+Imports System.Web.UI.DataVisualization.Charting
+
+Public Class _Default
+    Inherits Page
+
+    Public dbconn As New MySqlConnection
+    Public sql As String
+    Public dbcomm As New MySqlCommand
+    Public dbread As MySqlDataReader
+
+    Dim TimeCheck As Boolean
+
     Public Function GetPageHTML(ByVal URL As String,
       Optional ByVal TimeoutSeconds As Integer = 10) _
       As String
@@ -11,80 +25,431 @@ Public Class Form1
         Dim objEncoding As System.Text.Encoding
         Dim objStreamRead As System.IO.StreamReader
 
-        Try
-            ' Setup our Web request
-            objRequest = Net.WebRequest.Create(URL)
-            objRequest.Timeout = TimeoutSeconds * 1000
-            ' Retrieve data from request
-            objResponse = objRequest.GetResponse
-            objStreamReceive = objResponse.GetResponseStream
-            objEncoding = System.Text.Encoding.GetEncoding(
-           "utf-8")
-            objStreamRead = New System.IO.StreamReader(
-           objStreamReceive, objEncoding)
-            ' Set function return value
-            GetPageHTML = objStreamRead.ReadToEnd()
-            ' Check if available, then close response
-            If Not objResponse Is Nothing Then
-                objResponse.Close()
-            End If
-        Catch
-            ' Error occured grabbing data, simply return nothing
-            Return ""
-        End Try
+        If TimeString Like "##:44:##" Then
+            Try
+                ' Setup our Web request
+                objRequest = Net.WebRequest.Create(URL)
+                objRequest.Timeout = TimeoutSeconds * 1000
+                ' Retrieve data from request
+                objResponse = objRequest.GetResponse
+                objStreamReceive = objResponse.GetResponseStream
+                objEncoding = System.Text.Encoding.GetEncoding(
+               "utf-8")
+                objStreamRead = New System.IO.StreamReader(
+               objStreamReceive, objEncoding)
+                ' Set function return value
+                GetPageHTML = objStreamRead.ReadToEnd()
+                ' Check if available, then close response
+                If Not objResponse Is Nothing Then
+                    objResponse.Close()
+                End If
+            Catch
+                ' Error occured grabbing data, simply return nothing
+                Return ""
+            End Try
+        End If
     End Function
-    Private Sub btnProcess_Click(sender As Object, e As EventArgs) Handles btnProcess.Click
+
+    Protected Sub btnProcess_Click(sender As Object, e As EventArgs) Handles btnProcess.Click
         'The HTML of the Amazon listing is placed into a string called s
-        Dim s As String = GetPageHTML("http://www.amazon.com/Clannad-After-Story-Complete-Collection/dp/B004JST21W/ref=tmm_dvd_swatch_0?_encoding=UTF8&qid=1459796823&sr=8-1")
-        
-        'Ideally, the user puts in a link in a textbox or some other input form which is fed into GetPageHTML
+        'Dim s As String = GetPageHTML("http://www.amazon.com/Clannad-After-Story-Complete-Collection/dp/B004JST21W/ref=tmm_dvd_swatch_0?_encoding=UTF8&qid=1459796823&sr=8-1")
+
+        'The HTML placed into txtLink.text of the site listing from JBox, JList, or Amazon is placed into a string called s
+        'This method is more ideal because it gives the user a choice of whichever products he or she wants to search for
+        '! A try statement needs to go here in case the user does not enter anything
+        '! If he or she does not, it tells him or to please enter a valid link
+        Dim s As String = GetPageHTML(txtLink.Text)
+
+
         'The subsequent output is returned to a linklabel, listview, and/or textbox
         Dim ss() As String
-        
+
         'This looks for points with which we can use to separate the code into substrings. "<" in this case.
         Dim delim() As String = {"<"}
-        
+
         'Searches for the ">$" before the monetary value (on its left side)
-        Dim searchString As String = ">$"
-        
+        Dim searchString As String '= ">$"
+
         'This becomes the starting value for our index
-        Dim startIndex As Integer = s.IndexOf(searchString)
-        
-        'The searchString is changed to find the the string listed below which borders the monetary value on its right side.
-        searchString = "</span>" & vbLf & "                </div>" & vbLf & "            " & vbLf & "        </div>" & vbLf & "    </div>" & vbLf & "    " & vbLf & "    </h5>"
-        
-        'The value of the first character, the " before </span>, is indexed
-        Dim endIndex As Integer = s.IndexOf(searchString)
-        
-        'The substring
-        Dim substring As String = s.Substring(startIndex, endIndex) ' + searchString.Length - startIndex)
-        
-        'searchString is changed to just the $ before the monetary value, and the value of this searchString's location is indexed into startIndex
-        searchString = "$"
-        startIndex = substring.IndexOf(searchString)
-        
-        'searchString is changed to the </span> located after the monetary value, and the value of this searchString's location is indexed into endIndex
-        searchString = "</span>"
-        endIndex = substring.IndexOf(searchString)
-        
-        'The second substring is declared
-        Dim substring1 As String = substring.Substring(startIndex, endIndex)
-        
-        'It subsequently is split into another substring called ss
-        ss = substring1.Split(delim, StringSplitOptions.None)
-        
-        'Price is declared as a double equal to the substring at the 0 position
-        'ss(0) equals the price of the item; ss(1) equals the righthand side of the substring after the price (</span>...)
-        Dim price As Double = ss(0)
-        
-        'Returns all substrings to a listbox in order to better show the trimming
-        lbxHTML.Items.Add(substring)
-        lbxHTML.Items.Add(substring1)
-        lbxHTML.Items.Add(price)
+        Dim startIndex As Integer '= s.IndexOf(searchString)
+
+        'With each link that is placed into the textbox, there is going to be a "www." and a ".com"
+        'By getting the indexes of each within the txtLink.Text, the . and .com become startInputIndex and endInputIndex, respectively
+        'These indexes tell the Substring of inputsubstring where to define the substring. For Amazon, this is .amazon.com
+        'We repeat this with another inputsubstring1 and get the Substring of inputsubstring to remove /[phrase]. This may be a VB glitch
+        'This is because the array inputss uses inputdelim to trim the . away from the word it borders
+        '! This block leads into the case statement below where the textbox's versatility with the supported sites will be coded 
+        Dim inputss() As String
+        Dim inputdelim() As String = {"."}
+
+        Select Case txtLink.Text
+            Case "amazon".ToLower
+                lbxHTML.Items.Add("It works")
+        End Select
+
+        Dim siteNameDelim() As String = {"//"}
+        Dim searchLink As String = "//"
+        Dim siteNameSubstring As String
+        Dim siteNameStartIndex As Integer = txtLink.Text.IndexOf(searchLink)
+        searchLink = ".com"
+        Dim siteNameEndIndex As Integer = txtLink.Text.IndexOf(searchLink)
+
+        siteNameSubstring = txtLink.Text.Substring(siteNameStartIndex, siteNameEndIndex)
+
+        Dim siteNameSubstring1 As String
+        searchLink = "//"
+        siteNameStartIndex = siteNameSubstring.IndexOf(searchLink)
+        searchLink = ".c"
+        siteNameEndIndex = siteNameSubstring.IndexOf(searchLink)
+        siteNameSubstring1 = siteNameSubstring.Substring(siteNameStartIndex, siteNameEndIndex)
+
+        Dim siteNameString() As String
+        siteNameString = siteNameSubstring1.Split(siteNameDelim, StringSplitOptions.None)
+        'txtInputTest.Text = siteNameString(1)
+
+
+        'Dim searchInputString As String = "."
+        'Dim inputStartIndex As Integer = txtLink.Text.IndexOf(searchInputString)
+        'searchInputString = ".com/"
+        'Dim inputEndIndex As Integer = txtLink.Text.IndexOf(searchInputString)
+
+        'Dim inputsubstring As String = txtLink.Text.Substring(inputStartIndex, inputEndIndex)
+        'inputStartIndex = inputsubstring.IndexOf(".")
+        'inputEndIndex = inputsubstring.IndexOf(".com/")
+        'Dim inputsubstring1 As String = inputsubstring.Substring(inputStartIndex, inputEndIndex)
+
+        Dim endIndex As Integer
+        Dim substring As String
+
+        Dim substring1 As String
+        Dim price As Double
+
+        'Testing the substring
+        'inputss = inputsubstring1.Split(inputdelim, StringSplitOptions.None)
+        'txtInputTest.Text = inputss(1)
+
+        Dim productnamesubstring() As String
+        Dim delim1() As String
+
+        'Case statement for Amazon
+        Select Case siteNameString(1).ToLower
+            Case "www.amazon"
+                'Insert the code below
+                'This is important because the searchString for Amazon specifically has to return a certain pattern which will not work for JList or JBox
+                If TimeString Like "##:44:##" Then
+                    searchString = ">$"
+                    startIndex = s.IndexOf(searchString)
+                    searchString = vbLf & "                </div>" & vbLf & "            " & vbLf & "        </div>" & vbLf & "    </div>" & vbLf & "    " & vbLf & "    </h5>"
+                    endIndex = s.IndexOf(searchString)
+                    substring = s.Substring(startIndex, endIndex - startIndex) ' + searchString.Length - startIndex)
+                    searchString = "$"
+                    startIndex = substring.IndexOf(searchString)
+                    searchString = "</span>"
+                    endIndex = substring.IndexOf(searchString)
+                    substring1 = substring.Substring(startIndex, endIndex - startIndex)
+                    ss = substring1.Split(delim, StringSplitOptions.None)
+                    price = ss(0)
+
+
+                    lbxHTML.Items.Clear()
+                    lbxHTML.Items.Add(substring)
+                    lbxHTML.Items.Add(substring1)
+                    lbxHTML.Items.Add(price)
+
+
+                    Dim datatable As New DataTable()
+                    datatable.Columns.AddRange(New DataColumn() {New DataColumn("Time", GetType(String)), New DataColumn("Price", GetType(Double))})
+                    Dim datatable1 As New DataTable()
+                    datatable1.Columns.AddRange(New DataColumn() {New DataColumn("ID", GetType(Integer)), New DataColumn("Time", GetType(Double)), New DataColumn("Price", GetType(Double))})
+                    Dim converteddate As Double
+                    Dim dataview As New DataView(datatable1)
+
+                    Dim count As Integer
+
+                    datatable.Rows.Add(Now, price)
+                    converteddate = Now.ToOADate
+                    datatable1.Rows.Add(count, converteddate, price)
+                    count += count
+
+                    Dim idcount As Integer
+                    'Dim productnamesubstring() As String
+                    delim1 = {"/dp/"}
+                    productnamesubstring = txtLink.Text.Split(delim1, StringSplitOptions.None)
+                    delim1 = {"/"}
+                    Dim productnamesubstring1 As String = productnamesubstring(1)
+                    Dim productnamesubstring2() As String
+                    productnamesubstring2 = productnamesubstring1.Split(delim1, StringSplitOptions.None)
+                    'productnamesubstring2(0) should equal another variable with a more readable name
+                    sql = "CREATE TABLE IF NOT EXISTS amazon_" & productnamesubstring2(0) & " (ID INTEGER(3) auto_increment, Time DOUBLE, Price DOUBLE, PRIMARY KEY(ID));"
+                    Try
+                        dbcomm = New MySqlCommand(sql, dbconn)
+                        dbread = dbcomm.ExecuteReader()
+                        dbread.Close()
+                        MsgBox("Table created or exists.")
+                    Catch ex As Exception
+                        MsgBox("Failed to create or read table: " & ex.Message.ToString())
+                    End Try
+                    idcount += idcount
+
+                    'If TimeString Like "##:00:##" Then
+                    sql = "INSERT INTO amazon_" & productnamesubstring2(0) & "(Time, Price) VALUES(" & converteddate & ", " & price & ");"
+                    Try
+                        dbcomm = New MySqlCommand(sql, dbconn)
+                        dbread = dbcomm.ExecuteReader()
+                        dbread.Close()
+                        MsgBox("Data inserted")
+                        idcount += idcount
+                    Catch ex As Exception
+                        MsgBox("Failed to insert data: " & ex.Message.ToString())
+                    End Try
+                    dbread.Close()
+                    'Else
+                    'End If
+
+                    'The database is the schema's name: spousu tracker
+                    dbconn = New MySqlConnection("Data Source=localhost; user id=root; password=Animegirl; port=3306; database=spousu tracker")
+                    Try
+                        dbconn.Open()
+                    Catch ex As Exception
+                        MsgBox("Connection Error: " & ex.Message.ToString)
+                    End Try
+                    Dim constr As String = ConfigurationManager.ConnectionStrings("spousutrackerConnectionString").ConnectionString
+                    Using con As New MySqlConnection(constr)
+                        Using cmd As New MySqlCommand("SELECT Time, Price FROM amazon_" & productnamesubstring2(0))
+                            Using sda As New MySqlDataAdapter()
+                                cmd.Connection = con
+                                sda.SelectCommand = cmd
+                                Using dt As New DataTable()
+                                    sda.Fill(dt)
+                                    GridView2.DataSource = dt
+                                    GridView2.DataBind()
+                                    Dim x As String() = New String(dt.Rows.Count - 1) {}
+                                    Dim y As Integer() = New Integer(dt.Rows.Count - 1) {}
+                                    For i As Integer = 0 To dt.Rows.Count - 1
+                                        x(i) = dt.Rows(i)(0).ToString()
+                                        y(i) = Convert.ToInt32(dt.Rows(i)(1))
+                                    Next
+                                    Chart1.Series(0).Points.DataBindXY(x, y)
+                                    Chart1.Series(0).ChartType = SeriesChartType.Line
+                                End Using
+                            End Using
+                        End Using
+                    End Using
+
+                Else
+                    'Probably not needed: Dim idcount As Integer
+                    'Dim productnamesubstring() As String
+                    'delim1 = {"/dp/"}
+                    'productnamesubstring = txtLink.Text.Split(delim1, StringSplitOptions.None)
+                    'delim1 = {"/"}
+                    'productnamesubstring = txtLink.Text.Split(delim1, StringSplitOptions.None)
+
+                    dbconn = New MySqlConnection("Data Source=localhost; user id=root; password=Animegirl; port=3306; database=spousu tracker")
+                    Try
+                        dbconn.Open()
+                    Catch ex As Exception
+                        MsgBox("Connection Error: " & ex.Message.ToString)
+                    End Try
+
+                    Try
+                        'Dim productnamesubstring() As String
+                        delim1 = {"/dp/"}
+                        productnamesubstring = txtLink.Text.Split(delim1, StringSplitOptions.None)
+                        delim1 = {"/"}
+                        Dim productnamesubstring1 As String = productnamesubstring(1)
+                        Dim productnamesubstring2() As String
+                        productnamesubstring2 = productnamesubstring1.Split(delim1, StringSplitOptions.None)
+
+                        Dim constr As String = ConfigurationManager.ConnectionStrings("spousutrackerConnectionString").ConnectionString
+                        Using con As New MySqlConnection(constr)
+                            'Order the SELECT by DESC order
+                            Using cmd As New MySqlCommand("SELECT Time, Price FROM amazon_" & productnamesubstring2(0))
+                                Using sda As New MySqlDataAdapter()
+                                    cmd.Connection = con
+                                    sda.SelectCommand = cmd
+                                    Using dt As New DataTable()
+                                        sda.Fill(dt)
+                                        GridView2.DataSource = dt
+                                        GridView2.DataBind()
+                                        Dim x As String() = New String(dt.Rows.Count - 1) {}
+                                        Dim y As Integer() = New Integer(dt.Rows.Count - 1) {}
+                                        For i As Integer = 0 To dt.Rows.Count - 1
+                                            x(i) = dt.Rows(i)(0).ToString()
+                                            y(i) = Convert.ToInt32(dt.Rows(i)(1))
+                                        Next
+                                        Chart1.Series(0).Points.DataBindXY(x, y)
+                                        Chart1.Series(0).ChartType = SeriesChartType.Line
+                                    End Using
+                                End Using
+                            End Using
+                        End Using
+                        lbxHTML.Items.Clear()
+                        sql = "SELECT Price FROM amazon_ " & productnamesubstring2(0) & "ORDER BY Time DESC LIMIT 1;"
+                        'I need to get the price from the latest entry in the data column.
+                        '' lbxHTML.Items.Add
+                    Catch ex As Exception
+                        MsgBox("Data table will be created at the hour.")
+                    End Try
+                End If
+            Case "jbox"
+                searchString = "<span class=""price"">"
+                startIndex = s.IndexOf(searchString)
+                searchString = "                                    </span>" & vbLf & "                        " & vbLf & "        </div>"
+                endIndex = s.IndexOf(searchString)
+                substring = s.Substring(startIndex, endIndex - startIndex)
+                searchString = "$"
+                startIndex = substring.IndexOf(searchString)
+                searchString = "</span>"
+                endIndex = substring.IndexOf(searchString)
+                substring1 = substring.Substring(startIndex, endIndex - startIndex)
+                ss = substring1.Split(delim, StringSplitOptions.None)
+                price = ss(0)
+
+                lbxHTML.Items.Clear()
+                lbxHTML.Items.Add(substring)
+                lbxHTML.Items.Add(substring1)
+                lbxHTML.Items.Add(price)
+
+                'The idea for the test here is to take the breakpoint off and let the server run for an amount of time                
+                'This is to make sure TimeCheck works. If it does, it will go through the program automatically at each interval
+                'If TimeCheck = TimeString Like "[##]:00:00" Then                
+
+                'If Me.IsPostBack Then
+                Dim datatable As New DataTable()
+                datatable.Columns.AddRange(New DataColumn() {New DataColumn("Time", GetType(String)), New DataColumn("Price", GetType(Double))})
+                Dim datatable1 As New DataTable()
+                datatable1.Columns.AddRange(New DataColumn() {New DataColumn("ID", GetType(Integer)), New DataColumn("Time", GetType(Double)), New DataColumn("Price", GetType(Double))})
+                Dim converteddate As Double
+                Dim dataview As New DataView(datatable1)
+
+                Dim count As Integer
+
+                datatable.Rows.Add(Now, price)
+                converteddate = Now.ToOADate
+                datatable1.Rows.Add(count, converteddate, price)
+                count += count
+
+                'Binding the second gridview to the database
+
+
+                'Dim x As String() = New String(datatable1.Rows.Count - 1) {}
+                'Dim y As Integer() = New Integer(datatable1.Rows.Count - 1) {}
+                'For i As Integer = 0 To datatable1.Rows.Count - 1
+                '    x(i) = datatable1.Rows(i)(0).ToString()
+                '    y(i) = Convert.ToInt32(datatable1.Rows(i)(1))
+                'Next
+                'Chart1.Series(0).Points.DataBindXY(x, y)
+                'Chart1.Series(0).ChartType = SeriesChartType.Line
+                'End If
+
+                Dim idcount As Integer
+                'Dim productnamesubstring() As String
+                delim1 = {".com/"}
+                productnamesubstring = txtLink.Text.Split(delim1, StringSplitOptions.None)
+
+                sql = "CREATE TABLE IF NOT EXISTS jbox_" & productnamesubstring(1) & " (ID INTEGER(3) auto_increment, Time DOUBLE, Price DOUBLE, PRIMARY KEY(ID));"
+                Try
+                    dbcomm = New MySqlCommand(sql, dbconn)
+                    dbread = dbcomm.ExecuteReader()
+                    dbread.Close()
+                    MsgBox("Table created or exists.")
+                Catch ex As Exception
+                    MsgBox("Failed to create or read table: " & ex.Message.ToString())
+                End Try
+                idcount += idcount
+
+                If TimeString Like "##:14:##" Then
+                    sql = "INSERT INTO jbox_" & productnamesubstring(1) & "(Time, Price) VALUES(" & converteddate & ", " & price & ");"
+                    Try
+                        dbcomm = New MySqlCommand(sql, dbconn)
+                        dbread = dbcomm.ExecuteReader()
+                        dbread.Close()
+                        MsgBox("Data inserted")
+                        idcount += idcount
+                    Catch ex As Exception
+                        MsgBox("Failed to insert data: " & ex.Message.ToString())
+                    End Try
+                    dbread.Close()
+                Else
+                End If
+
+                'The database is the schema's name: spousu tracker
+                dbconn = New MySqlConnection("Data Source=localhost; user id=root; password=Animegirl; port=3306; database=spousu tracker")
+                Try
+                    dbconn.Open()
+                Catch ex As Exception
+                    MsgBox("Connection Error: " & ex.Message.ToString)
+                End Try
+                Dim constr As String = ConfigurationManager.ConnectionStrings("spousutrackerConnectionString").ConnectionString
+                Using con As New MySqlConnection(constr)
+                    Using cmd As New MySqlCommand("SELECT Time, Price FROM jbox_" & productnamesubstring(1))
+                        Using sda As New MySqlDataAdapter()
+                            cmd.Connection = con
+                            sda.SelectCommand = cmd
+                            Using dt As New DataTable()
+                                sda.Fill(dt)
+                                GridView2.DataSource = dt
+                                GridView2.DataBind()
+                                Dim x As String() = New String(dt.Rows.Count - 1) {}
+                                Dim y As Integer() = New Integer(dt.Rows.Count - 1) {}
+                                For i As Integer = 0 To dt.Rows.Count - 1
+                                    x(i) = dt.Rows(i)(0).ToString()
+                                    y(i) = Convert.ToInt32(dt.Rows(i)(1))
+                                Next
+                                Chart1.Series(0).Points.DataBindXY(x, y)
+                                Chart1.Series(0).ChartType = SeriesChartType.Line
+                            End Using
+                        End Using
+                    End Using
+                End Using
+        End Select
     End Sub
 
-    Private Sub btnExit_Click(sender As Object, e As EventArgs) Handles btnExit.Click
-        Me.Close()
-        Application.Exit()
+    Protected Sub Page_Load(sender As Object, e As EventArgs) Handles Me.Load
+        'Dim converteddate As Double
+        'Dim count As Integer
+        'converteddate = Now.ToOADate
+
+
+        'Dim datatable1 As New DataTable()
+        'datatable1.Columns.AddRange(New DataColumn() {New DataColumn("ID", GetType(Integer)), New DataColumn("Time", GetType(Double)), New DataColumn("Price", GetType(Double))})
+
+        'datatable1.Rows.Add(count, converteddate, price)
+        'count += count
+        'The database is the schema's name: spousu tracker
+        dbconn = New MySqlConnection("Data Source=localhost; user id=root; password=Animegirl; port=3306; database=spousu tracker")
+        Try
+            dbconn.Open()
+        Catch ex As Exception
+            MsgBox("Connection Error: " & ex.Message.ToString)
+        End Try
+        'Dim constr As String = ConfigurationManager.ConnectionStrings("spousutrackerConnectionString").ConnectionString
+        'Using con As New MySqlConnection(constr)
+        '    Using cmd As New MySqlCommand("SELECT * FROM jbox_pre5637")
+        '        Using sda As New MySqlDataAdapter()
+        '            cmd.Connection = con
+        '            sda.SelectCommand = cmd
+        '            Using dt As New DataTable()
+        '                sda.Fill(dt)
+        '                GridView2.DataSource = dt
+        '                GridView2.DataBind()
+
+        '            End Using
+        '        End Using
+        '    End Using
+        'End Using
+    End Sub
+
+    Protected Sub btnSave_Click(sender As Object, e As EventArgs) Handles btnSave.Click
+        sql = "INSERT INTO amazon_clannad_bluray(id, time, price) VALUES(1, 1030, 55)"
+        Try
+            dbcomm = New MySqlCommand(sql, dbconn)
+            dbread = dbcomm.ExecuteReader()
+            dbread.Close()
+            MsgBox("Data inserted.")
+        Catch ex As Exception
+            MsgBox("Failed to insert data: " & ex.Message.ToString())
+        End Try
+        dbread.Close()
     End Sub
 End Class
